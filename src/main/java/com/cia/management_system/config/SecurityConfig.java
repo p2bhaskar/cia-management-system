@@ -60,35 +60,83 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+//    @Bean
+//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+//        http.csrf(csrf -> csrf.disable())
+//                .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+//                .authorizeHttpRequests(auth -> auth
+//                        // Public endpoints (no authentication required)
+//                        .requestMatchers("/api/auth/**").permitAll()
+//                        .requestMatchers("/api/public/**").permitAll()
+//                        .requestMatchers("/actuator/**").permitAll()
+//                        .requestMatchers("/api/subjects/**").permitAll()
+//                        .requestMatchers("/error").permitAll()
+//
+//                        // Student endpoints
+//                        .requestMatchers("/api/student/**").hasRole("STUDENT")
+//
+//                        // Faculty endpoints
+//                        .requestMatchers("/api/faculty/**").hasRole("FACULTY")
+//
+//                        // Admin endpoints
+//                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+//
+//                        // All other requests require authentication
+//                        .anyRequest().authenticated()
+//                );
+//
+//        http.authenticationProvider(authenticationProvider());
+//        http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+//
+//        return http.build();
+//    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())
-                .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+        http
+                // ✅ THIS LINE ENABLES YOUR CorsConfig
+                .cors(cors -> {})
+
+                .csrf(csrf -> csrf.disable())
+
+                .exceptionHandling(exception ->
+                        exception.authenticationEntryPoint(unauthorizedHandler)
+                )
+
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints (no authentication required)
+
+                        // ⭐⭐⭐ CRITICAL — allow browser preflight
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/subjects/**").permitAll()
                         .requestMatchers("/error").permitAll()
 
-                        // Student endpoints
+                        // Role endpoints
                         .requestMatchers("/api/student/**").hasRole("STUDENT")
-
-                        // Faculty endpoints
                         .requestMatchers("/api/faculty/**").hasRole("FACULTY")
-
-                        // Admin endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // All other requests require authentication
                         .anyRequest().authenticated()
                 );
 
         http.authenticationProvider(authenticationProvider());
-        http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(authenticationJwtTokenFilter(),
+                UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
+
+
+
 }
