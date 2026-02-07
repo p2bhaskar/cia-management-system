@@ -1184,7 +1184,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -1800,5 +1802,141 @@ public class BulkImportService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+
+
+    // Add this method to your BulkImportService class
+    @Transactional
+    public BulkImportResult importStudentsChunk(List<Map<String, Object>> chunk, int chunkNumber) {
+        int successCount = 0;
+        int failureCount = 0;
+        List<String> errors = new ArrayList<>();
+        List<Map<String, String>> credentials = new ArrayList<>();
+
+        log.info("Processing student chunk {} with {} rows", chunkNumber, chunk.size());
+
+        for (int i = 0; i < chunk.size(); i++) {
+            Map<String, Object> row = chunk.get(i);
+            int rowNum = ((chunkNumber - 1) * chunk.size()) + i + 1;
+
+            try {
+                String fullName = getStringValue(row.get("Full Name"));
+                String email = getStringValue(row.get("Email"));
+                String rollNumber = getStringValue(row.get("Roll Number"));
+                String semesterStr = getStringValue(row.get("Semester"));
+                String stream = getStringValue(row.get("Stream"));
+                String section = getStringValue(row.get("Section"));
+                String phone = getStringValue(row.get("Phone"));
+                String address = getStringValue(row.get("Address"));
+
+                // Validation
+                if (isBlank(fullName) || isBlank(email) || isBlank(rollNumber) ||
+                        isBlank(semesterStr) || isBlank(stream)) {
+                    errors.add("Row " + rowNum + ": Missing required fields");
+                    failureCount++;
+                    continue;
+                }
+
+                rollNumber = rollNumber.trim();
+
+                // Check duplicates
+                if (userRepository.existsByUsername(rollNumber)) {
+                    errors.add("Row " + rowNum + ": Roll number already exists");
+                    failureCount++;
+                    continue;
+                }
+
+                if (userRepository.existsByEmail(email.trim())) {
+                    errors.add("Row " + rowNum + ": Email already exists");
+                    failureCount++;
+                    continue;
+                }
+
+                int semester = Integer.parseInt(semesterStr.trim());
+                if (semester < 1 || semester > 8) {
+                    errors.add("Row " + rowNum + ": Semester must be 1-8");
+                    failureCount++;
+                    continue;
+                }
+
+                Student.Stream streamEnum;
+                try {
+                    streamEnum = Student.Stream.valueOf(stream.trim().toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    errors.add("Row " + rowNum + ": Invalid stream. Must be BCA or MCA");
+                    failureCount++;
+                    continue;
+                }
+
+                String generatedPassword = generateStudentPassword(rollNumber);
+
+                // Create user
+                User user = new User();
+                user.setUsername(rollNumber);
+                user.setEmail(email.trim());
+                user.setPassword(passwordEncoder.encode(generatedPassword));
+                user.setFullName(fullName.trim());
+                user.getRoles().add(Role.STUDENT);
+                user.setEnabled(true);
+                user.setCreatedAt(java.time.LocalDateTime.now());
+
+                if (!isBlank(phone)) {
+                    user.setPhoneNumber(phone.trim());
+                }
+
+                User savedUser = userRepository.save(user);
+                userRepository.flush();
+
+                // Create student
+                Student student = new Student();
+                student.setUser(savedUser);
+                student.setRollNumber(rollNumber);
+                student.setSemester(semester);
+                student.setStream(streamEnum);
+                student.setSection(isBlank(section) ? null : section.trim());
+                student.setPhoneNumber(isBlank(phone) ? null : phone.trim());
+                student.setAddress(isBlank(address) ? null : address.trim());
+                student.setAdmissionYear(java.time.LocalDate.now().getYear());
+                student.generateAcademicYear();
+
+                studentRepository.save(student);
+
+                // Add credentials
+                Map<String, String> credential = new HashMap<>();
+                credential.put("fullName", fullName.trim());
+                credential.put("rollNumber", rollNumber);
+                credential.put("email", email.trim());
+                credential.put("username", rollNumber);
+                credential.put("password", generatedPassword);
+                credential.put("stream", stream.trim().toUpperCase());
+                credential.put("semester", String.valueOf(semester));
+                credentials.add(credential);
+
+                successCount++;
+                log.info("Successfully imported student: {}", rollNumber);
+
+            } catch (Exception e) {
+                log.error("Error in row {}: {}", rowNum, e.getMessage());
+                errors.add("Row " + rowNum + ": " + e.getMessage());
+                failureCount++;
+            }
+        }
+
+        BulkImportResult result = new BulkImportResult(successCount, failureCount, errors);
+        result.setCredentials(credentials);
+        return result;
+    }
+
+    private String generateStudentPassword(String rollNumber) {
+        if (rollNumber.length() >= 4) {
+            return "Student@" + rollNumber.substring(rollNumber.length() - 4);
+        }
+        return "Student@" + rollNumber;
+    }
+
+    private String getStringValue(Object value) {
+        if (value == null) return null;
+        return value.toString();
     }
 }

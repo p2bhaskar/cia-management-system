@@ -829,6 +829,7 @@
 package com.cia.management_system.controller;
 
 import com.cia.management_system.dto.BulkImportResult;
+import com.cia.management_system.dto.ChunkImportRequest;
 import com.cia.management_system.dto.CreateUserRequest;
 import com.cia.management_system.dto.UserDTO;
 import com.cia.management_system.service.AdminService;
@@ -1158,6 +1159,37 @@ public class AdminController {
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+
+
+    // Add this endpoint method
+    @PostMapping("/students/bulk-import-chunk")
+    public ResponseEntity<Map<String, Object>> bulkImportStudentsChunk(
+            @RequestBody ChunkImportRequest request) {
+        try {
+            BulkImportResult result = bulkImportService.importStudentsChunk(
+                    request.getChunk(),
+                    request.getChunkNumber()
+            );
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("successCount", result.getSuccessCount());
+            response.put("failureCount", result.getFailureCount());
+            response.put("errors", result.getErrors());
+            response.put("credentials", result.getCredentials());
+            response.put("message", "Chunk " + request.getChunkNumber() + " processed successfully");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.out.println("Chunk import failed" + e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Failed to import chunk: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(response);
         }
     }
 }
