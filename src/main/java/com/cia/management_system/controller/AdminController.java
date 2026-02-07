@@ -960,13 +960,26 @@ public class AdminController {
 
     // ==================== FACULTY MANAGEMENT ====================
 
+//    @PostMapping("/faculty")
+//    public ResponseEntity<UserDTO> createFaculty(@Valid @RequestBody CreateUserRequest request) {
+//        try {
+//            UserDTO user = adminService.createFaculty(request);
+//            return ResponseEntity.status(HttpStatus.CREATED).body(user);
+//        } catch (RuntimeException e) {
+//            return ResponseEntity.badRequest().build();
+//        }
+//    }
+
     @PostMapping("/faculty")
-    public ResponseEntity<UserDTO> createFaculty(@Valid @RequestBody CreateUserRequest request) {
+    public ResponseEntity<?> createFaculty(@Valid @RequestBody CreateUserRequest request) {
         try {
             UserDTO user = adminService.createFaculty(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(user);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            // ✅ Return the actual error message
+            Map<String, String> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         }
     }
 

@@ -570,6 +570,46 @@ public class AdminService {
         return dto;
     }
 
+//    @Transactional
+//    public UserDTO createFaculty(CreateUserRequest request) {
+//        if (userRepository.existsByUsername(request.getUsername())) {
+//            throw new RuntimeException("Username already exists");
+//        }
+//
+//        if (facultyRepository.existsByEmployeeId(request.getEmployeeId())) {
+//            throw new RuntimeException("Employee ID already exists");
+//        }
+//
+//        // Generate password: Faculty@ + last 4 digits
+//        String generatedPassword = "Faculty@" + request.getUsername().substring(
+//                Math.max(0, request.getUsername().length() - 4)
+//        );
+//
+//        User user = new User();
+//        user.setUsername(request.getUsername());
+//        user.setPassword(passwordEncoder.encode(generatedPassword));
+//        user.setEmail(request.getEmail());
+//        user.setFullName(request.getFullName());
+//        user.getRoles().add(Role.FACULTY);
+//        user.setEnabled(true);
+//        user.setCreatedAt(LocalDateTime.now());
+//
+//        User savedUser = userRepository.save(user);
+//
+//        Faculty faculty = new Faculty();
+//        faculty.setUser(savedUser);
+//        faculty.setEmployeeId(request.getEmployeeId());
+//        faculty.setDepartment(request.getDepartment());
+//        faculty.setDesignation(request.getDesignation());
+//
+//        Faculty savedFaculty = facultyRepository.save(faculty);
+//
+//        // ✅ Convert with faculty entity, not just user
+//        UserDTO dto = convertFacultyToUserDTO(savedFaculty);
+//        dto.setGeneratedPassword(generatedPassword); // Include password for display
+//        return dto;
+//    }
+
     @Transactional
     public UserDTO createFaculty(CreateUserRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -601,6 +641,7 @@ public class AdminService {
         faculty.setEmployeeId(request.getEmployeeId());
         faculty.setDepartment(request.getDepartment());
         faculty.setDesignation(request.getDesignation());
+        faculty.setPhoneNumber(request.getPhoneNumber());  // ✅ ADD THIS LINE
 
         Faculty savedFaculty = facultyRepository.save(faculty);
 
